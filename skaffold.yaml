@@ -1,0 +1,12 @@
+apiVersion: skaffold/v1beta5
+kind: Config
+build:
+  tagPolicy:
+    sha256: {}
+  artifacts:
+    - image: localhost:32000/sweetforeign_web
+deploy:
+  helm:
+    releases:
+      - name: sweetforeign
+        chartPath: .
