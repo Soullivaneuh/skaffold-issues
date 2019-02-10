@@ -1,0 +1,32 @@
+branches:
+  only:
+    - master
+
+dist: xenial
+
+language: minimal
+
+env:
+  - DOCKER_HOST=unix:///var/snap/microk8s/current/docker.sock
+
+before_script:
+  - sudo apt-get install --yes snap
+  - sudo snap install microk8s --classic
+  - sudo snap alias microk8s.kubectl kubectl
+  - microk8s.start
+  - microk8s.status --wait-ready
+  - microk8s.enable dns registry
+  - kubectl wait --namespace container-registry --timeout=60s --for=condition=Ready pod/$(kubectl get pods --namespace container-registry -o jsonpath="{.items[0].metadata.name}")
+  - sudo snap install helm --classic
+  - helm init --wait
+  - docker info
+
+script:
+  - skaffold run
+  - export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=sweetforeign,app.kubernetes.io/instance=sweetforeign" -o jsonpath="{.items[0].metadata.name}")
+  - kubectl wait --all-namespaces --timeout=60s --for=condition=Ready pod/${POD_NAME}
+  - kubectl get all -o wide
+  - helm test sweetforeign --cleanup
+
+after_failure:
+  - kubectl logs sweetforeign-test-connection --namespace default
